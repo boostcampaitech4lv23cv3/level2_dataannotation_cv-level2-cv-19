@@ -3,7 +3,7 @@ import os.path as osp
 import time
 import math
 from datetime import timedelta
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 
 import torch
 from torch import cuda
@@ -35,6 +35,17 @@ def seed_everything(seed):
     torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
     random.seed(seed)
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise ArgumentTypeError('Boolean value expected.')
 #######################
 
 
@@ -59,7 +70,7 @@ def parse_args():
     parser.add_argument('--save_interval', type=int, default=5)
 
     ########################################
-    parser.add_argument('--validation', type=bool, default=True)
+    parser.add_argument('--validation', type=str2bool, default=True)
     parser.add_argument('--train_dir', type=str, default="train")
     parser.add_argument('--val_dir', type=str, default="annotation_0")
     parser.add_argument('--exp_name', type=str, default=f'exp_{datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")}')
