@@ -185,7 +185,7 @@ def is_cross_text(start_loc, length, vertices):
     return False
 
 
-def crop_img(img, vertices, labels, length):
+def crop_img(img, vertices, labels, length, bbox_ids=[]):
     '''crop img patches to obtain batch and augment
     Input:
         img         : PIL Image
@@ -383,3 +383,73 @@ class SceneTextDataset(Dataset):
         roi_mask = generate_roi_mask(image, vertices, labels)
 
         return image, word_bboxes, roi_mask
+
+
+class SceneTextDataset_val(SceneTextDataset):
+    def __init__(self, root_dir='../input/data/aistages', split='annotation_0', image_size=1024, crop_size=512, color_jitter=True, normalize=True):
+        super().__init__(root_dir, split, image_size, crop_size, color_jitter, normalize)
+
+"""
+    def __init__(self, root_dir='../input/data/aistages', split='annotation_0', image_size=1024, crop_size=512, color_jitter=True, normalize=True):
+        if split == "valid":
+            with open(osp.join(root_dir, f'ufo/{split}.json'), 'r+') as f:
+                anno = json.load(f)
+        # else:
+        #     with open():
+        #         pass
+        self.anno = anno
+        self.image_fnames = sorted(anno['images'].keys())
+        self.image_dir = osp.join(root_dir, 'images')
+
+        self.image_size, self.crop_size = image_size, crop_size
+        self.color_jitter, self.normalize = color_jitter, normalize
+    
+
+    def __len__(self):
+        return len(self.image_fnames)
+
+    
+    def __getitem__(self, idx):
+        image_fname = self.image_fnames[idx]
+        image_fpath = osp.join(self.image_dir, image_fname)
+
+        vertices = []
+        labels = []
+        # bbox_id = []  # for debugging
+        if len(self.anno['images'][image_fname]['words']):
+            # for key, word_info in self.anno['images'][image_fname]['words'].items():  # for debugging
+            for word_info in self.anno['images'][image_fname]['words'].values():
+                if "points" and "illegibility" in word_info.keys():
+                    if len(word_info["points"]) == 4 and (word_info["transcription"] is not None or word_info["transcription"] != ""):
+                        vertices.append(np.array(word_info['points']).flatten())
+                        labels.append(int(not word_info['illegibility']))
+                        # bbox_id.append(key)  # for debugging
+                    else:
+                        print(image_fname, word_info["transcription"])
+
+            vertices = np.array(vertices, dtype=np.float32)
+            labels = np.array(labels, dtype=np.int64)
+
+            image = Image.open(image_fpath)
+            image, vertices = resize_img(image, vertices, self.image_size)
+            image, vertices = adjust_height(image, vertices)
+            image, vertices = rotate_img(image, vertices)
+            image, vertices = crop_img(image, vertices, labels, self.crop_size)
+
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            image = np.array(image)
+
+            funcs = []
+            if self.color_jitter:
+                funcs.append(A.ColorJitter(0.5, 0.5, 0.5, 0.25))
+            if self.normalize:
+                funcs.append(A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
+            transform = A.Compose(funcs)
+
+            image = transform(image=image)['image']
+            word_bboxes = np.reshape(vertices, (-1, 4, 2))
+            roi_mask = generate_roi_mask(image, vertices, labels)
+
+            return image, word_bboxes, roi_mask
+            """
