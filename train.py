@@ -39,7 +39,7 @@ def seed_everything(seed):
 
 def str2bool(v):
     if isinstance(v, bool):
-        return v
+       return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
@@ -162,10 +162,10 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
         ######################################################
         ##### Validation
         if validation:
-            val_dataset = SceneTextDataset_val(image_size=image_size, crop_size=input_size)
+            val_dataset = SceneTextDataset_val(root_dir=data_dir, split=val_dir, image_size=image_size, crop_size=input_size)
             val_dataset = EASTDataset(val_dataset)
             val_num_batches = math.ceil(len(val_dataset) / batch_size)
-            val_loader = DataLoader(val_dataset, val_dir, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
 
             ##### Validation Cycle
             with torch.no_grad():
