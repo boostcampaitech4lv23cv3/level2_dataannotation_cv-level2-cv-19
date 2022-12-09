@@ -16,7 +16,6 @@ from dataset import SceneTextDataset
 from dataset import SceneTextDataset_val
 from model import EAST
 
-
 ######################
 import wandb
 from datetime import datetime
@@ -39,7 +38,7 @@ def seed_everything(seed):
 
 def str2bool(v):
     if isinstance(v, bool):
-       return v
+        return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
@@ -47,7 +46,6 @@ def str2bool(v):
     else:
         raise ArgumentTypeError('Boolean value expected.')
 #######################
-
 
 
 def parse_args():
@@ -73,6 +71,7 @@ def parse_args():
     parser.add_argument('--validation', type=str2bool, default=True)
     parser.add_argument('--train_dir', type=str, default="train")
     parser.add_argument('--val_dir', type=str, default="annotation_0")
+    parser.add_argument('--load_state', type=str, help="Select .pth Weight File name in model_dir.", default="")
     parser.add_argument('--exp_name', type=str, default=f'exp_{datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")}')
     ########################################
 
@@ -85,7 +84,7 @@ def parse_args():
 
 
 def do_training(data_dir, model_dir, device, image_size, input_size, num_workers, batch_size,
-                learning_rate, max_epoch, save_interval, validation, train_dir, val_dir, exp_name):
+                learning_rate, max_epoch, save_interval, validation, train_dir, val_dir, load_state, exp_name):
     dataset = SceneTextDataset(data_dir, split=train_dir, image_size=image_size, crop_size=input_size)
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)
@@ -94,6 +93,12 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = EAST()
     model.to(device)
+
+    ################################################################################
+    if len(load_state):
+        model.load_state_dict(torch.load(osp.join(model_dir, f"{load_state}.pth")))
+    ################################################################################
+
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[max_epoch // 2], gamma=0.1)
@@ -126,9 +131,9 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
                 epoch_loss += loss_val
 
                 # Epoch 별 Loss 체크용
-                epoch_cls_loss +=  extra_info['cls_loss']
-                epoch_angle_loss +=  extra_info['angle_loss']
-                epoch_iou_loss +=  extra_info['iou_loss']
+                epoch_cls_loss += extra_info['cls_loss']
+                epoch_angle_loss += extra_info['angle_loss']
+                epoch_iou_loss += extra_info['iou_loss']
 
                 pbar.update(1)
                 val_dict = {
@@ -140,17 +145,17 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
                 pbar.set_postfix(val_dict)
 
         ######################################################
-        epoch_loss /= num_batches 
+        epoch_loss /= num_batches
         epoch_cls_loss /= num_batches
         epoch_angle_loss /= num_batches
         epoch_iou_loss /= num_batches
 
-        print(f"Train {epoch+1}/{max_epoch} - "
-        f'Mean loss: {epoch_loss:.4f}, '
-        f'Cls loss: {epoch_cls_loss:.4f}, '
-        f'Angle loss: {epoch_angle_loss:.4f}, '
-        f'IoU loss: {epoch_iou_loss:.4f} | '
-        f'Elapsed time: {timedelta(seconds=time.time() - epoch_start)}')
+        print(f"Train {epoch + 1}/{max_epoch} - "
+              f'Mean loss: {epoch_loss:.4f}, '
+              f'Cls loss: {epoch_cls_loss:.4f}, '
+              f'Angle loss: {epoch_angle_loss:.4f}, '
+              f'IoU loss: {epoch_iou_loss:.4f} | '
+              f'Elapsed time: {timedelta(seconds=time.time() - epoch_start)}')
 
         wandb.log({
             "Train Epoch loss": epoch_loss,
@@ -162,7 +167,7 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
         ######################################################
         ##### Validation
         if validation:
-            val_dataset = SceneTextDataset_val(root_dir=data_dir, split=val_dir, image_size=image_size, crop_size=input_size)
+            val_dataset = SceneTextDataset_val(split=val_dir, image_size=image_size, crop_size=input_size)
             val_dataset = EASTDataset(val_dataset)
             val_num_batches = math.ceil(len(val_dataset) / batch_size)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
@@ -199,15 +204,15 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
                         }
                         pbar.set_postfix(val_dict)
 
-                epoch_loss /= val_num_batches 
+                epoch_loss /= val_num_batches
                 epoch_cls_loss /= val_num_batches
                 epoch_angle_loss /= val_num_batches
                 epoch_iou_loss /= val_num_batches
 
-                print(f"Validation {epoch+1}/{max_epoch} - "
-                f'Mean loss: {epoch_loss:.4f}, '
-                f'Best Validation loss: {best_val_loss:.4f}, | '
-                f'Elapsed time: {timedelta(seconds=time.time() - epoch_start)}')
+                print(f"Validation {epoch + 1}/{max_epoch} - "
+                      f'Mean loss: {epoch_loss:.4f}, '
+                      f'Best Validation loss: {best_val_loss:.4f}, | '
+                      f'Elapsed time: {timedelta(seconds=time.time() - epoch_start)}')
 
                 wandb.log({
                     "Val Epoch loss": epoch_loss,
@@ -223,13 +228,12 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
                     ckpt_fpath = osp.join(model_dir, "best_val_loss.pth")
                     torch.save(model.state_dict(), ckpt_fpath)
                     cnt = 0
-                    print(f"New Best Validation Loss at Epoch {epoch+1}, Saving the Best Model to {ckpt_fpath}")
+                    print(f"New Best Validation Loss at Epoch {epoch + 1}, Saving the Best Model to {ckpt_fpath}")
                 else:
                     cnt += 1
-                
+
                 if cnt > early_stop_value:
                     break
-
 
         #######################################################
         scheduler.step()
@@ -240,6 +244,7 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
 
             ckpt_fpath = osp.join(model_dir, 'latest.pth')
             torch.save(model.state_dict(), ckpt_fpath)
+            print(f"Model Checkpoint Saved at Epoch {epoch + 1} to '{ckpt_fpath}'")
 
 
 def main(args):
