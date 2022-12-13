@@ -25,6 +25,9 @@ from datetime import datetime
 import numpy as np
 import random
 
+from detect import get_bboxes
+from visualize import draw_bboxes
+from torchvision.transforms.functional import to_pil_image
 
 def seed_everything(seed):
     torch.manual_seed(seed)
@@ -73,6 +76,7 @@ def parse_args():
     parser.add_argument('--val_dir', type=str, default="annotation_0")
     parser.add_argument('--load_state', type=str, help="Select .pth Weight File name in model_dir.", default="")
     parser.add_argument('--exp_name', type=str, default=f'exp_{datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")}')
+    parser.add_argument('--save_validationimages', type=bool, default=True)
     ########################################
 
     args = parser.parse_args()
@@ -84,7 +88,7 @@ def parse_args():
 
 
 def do_training(data_dir, model_dir, device, image_size, input_size, num_workers, batch_size,
-                learning_rate, max_epoch, save_interval, validation, train_dir, val_dir, load_state, exp_name):
+                learning_rate, max_epoch, save_interval, validation, train_dir, val_dir, load_state, exp_name, save_validationimages):
     dataset = SceneTextDataset(data_dir, split=train_dir, image_size=image_size, crop_size=input_size)
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)
@@ -119,7 +123,7 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
         epoch_iou_loss = 0.
 
         with tqdm(total=num_batches) as pbar:
-            for img, gt_score_map, gt_geo_map, roi_mask in train_loader:
+            for img, gt_score_map, gt_geo_map, roi_mask, image_fname in train_loader:
                 pbar.set_description('[Epoch {}]'.format(epoch + 1))
 
                 loss, extra_info = model.train_step(img, gt_score_map, gt_geo_map, roi_mask)
@@ -185,11 +189,48 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
                 epoch_iou_loss = 0.
 
                 with tqdm(total=val_num_batches) as pbar:
-                    for img, gt_score_map, gt_geo_map, roi_mask in val_loader:
+                    for images, gt_score_map, gt_geo_map, roi_mask, image_fnames in val_loader:
                         pbar.set_description(f'[Epoch {epoch + 1}]')
 
-                        loss, extra_info = model.train_step(img, gt_score_map, gt_geo_map, roi_mask)
+                        loss, extra_info = model.train_step(images, gt_score_map, gt_geo_map, roi_mask)
 
+                        ###########################################################################
+                        if save_validationimages and (epoch +1 == max_epoch):
+                            score_maps = extra_info['score_map']
+                            geo_maps = extra_info['geo_map']                        
+                            score_maps, geo_maps = score_maps.cpu().numpy(), geo_maps.cpu().numpy()
+                            
+                            for idx, (image, score_map, geo_map) in enumerate(zip(images, score_maps, geo_maps)): # batch
+                                image_fname = image_fnames[idx]
+                                by_sample_bboxes = []
+                                orig_size = list(image.shape[1:])
+                                
+                                map_margin = int(abs(orig_size[0] - orig_size[1]) * 0.25 * input_size / max(orig_size))
+                                if orig_size[0] > orig_size[1]:
+                                    score_map, geo_map = score_map[:, :, :-map_margin], geo_map[:, :, :-map_margin]
+                                elif orig_size[0] < orig_size[1]:
+                                    score_map, geo_map = score_map[:, :-map_margin, :], geo_map[:, :-map_margin, :]
+
+                                bboxes = get_bboxes(score_map, geo_map)
+
+                                if bboxes is not None:
+                                    bboxes = bboxes[:, :8].reshape(-1, 4, 2)
+                                    bboxes *= max(orig_size) / input_size
+
+                                    if len(bboxes) > 0:
+                                        by_sample_bboxes.extend(bboxes)
+
+                                        # CxWxH/Tensor -> HxWXC/PIL
+                                        vis = to_pil_image(image)
+                                        # OPENCV C++ needs continugous variable/unit8
+                                        vis = np.ascontiguousarray(vis, dtype=np.uint8)
+                                        
+                                        draw_bboxes(vis, by_sample_bboxes, thickness=2)
+
+                                        img = wandb.Image(vis, caption=image_fname)
+                                        wandb.log({f"Validation @ epoch {epoch + 1}/{max_epoch}" : img})
+                        ###########################################################################
+                        
                         loss_val = loss.item()
                         epoch_loss += loss_val
 
