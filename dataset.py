@@ -382,7 +382,7 @@ class SceneTextDataset(Dataset):
         word_bboxes = np.reshape(vertices, (-1, 4, 2))
         roi_mask = generate_roi_mask(image, vertices, labels)
 
-        return image, word_bboxes, roi_mask
+        return image, word_bboxes, roi_mask, image_fname
 
 
 class SceneTextDataset_val(SceneTextDataset):
