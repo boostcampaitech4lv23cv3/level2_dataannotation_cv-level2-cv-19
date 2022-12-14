@@ -113,8 +113,8 @@ def do_training(data_dir, model_dir, device, image_size, input_size, num_workers
     # best_val_f1 = 0
     early_stop_value = 20
 
-    model.train()
     for epoch in range(max_epoch):
+        model.train()
         epoch_loss, epoch_start = 0, time.time()
 
         # Epoch 별 Loss 체크용
