@@ -7,7 +7,7 @@ from argparse import ArgumentParser, ArgumentTypeError
 
 import torch
 from torch import cuda
-from torch.utils.data import DataLoader, SubsetRandomSampler
+from torch.utils.data import DataLoader, SubsetRandomSampler, ConcatDataset
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 
@@ -18,7 +18,7 @@ from model import EAST
 
 ######################
 import wandb
-from datetime import datetime
+from datetime import datetime, timedelta
 ######################
 
 ######################
@@ -73,9 +73,9 @@ def parse_args():
     ########################################
     parser.add_argument('--validation', type=str2bool, default=True)
     parser.add_argument('--train_dir', type=str, default="train")
-    parser.add_argument('--val_dir', type=str, default="annotation_0")
+    parser.add_argument('--val_dir', type=str, default="validation")
     parser.add_argument('--load_state', type=str, help="Select .pth Weight File name in model_dir.", default="")
-    parser.add_argument('--exp_name', type=str, default=f'exp_{datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")}')
+    parser.add_argument('--exp_name', type=str, default=f'exp_{datetime.strftime(datetime.now()+timedelta(hours=9), "%Y%m%d_%H%M%S")}')
     parser.add_argument('--save_validationimages', type=bool, default=True)
     ########################################
 
@@ -90,6 +90,13 @@ def parse_args():
 def do_training(data_dir, model_dir, device, image_size, input_size, num_workers, batch_size,
                 learning_rate, max_epoch, save_interval, validation, train_dir, val_dir, load_state, exp_name, save_validationimages):
     dataset = SceneTextDataset(data_dir, split=train_dir, image_size=image_size, crop_size=input_size)
+    """
+    # Dataset Concatenation
+    dataset1 = SceneTextDataset(root_dir="../input/data/ICDAR15", split=train_dir, image_size=image_size, crop_size=input_size)
+    dataset2 = SceneTextDataset(root_dir="../input/data/ICDAR17", split=train_dir, image_size=image_size, crop_size=input_size)
+    dataset3 = SceneTextDataset(root_dir="../input/data/ICDAR19", split=train_dir, image_size=image_size, crop_size=input_size)
+    dataset = ConcatDataset([dataset1, dataset2, dataset3])
+    """
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)
     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
