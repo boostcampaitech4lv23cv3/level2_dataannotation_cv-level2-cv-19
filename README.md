@@ -1,12 +1,12 @@
 <img src="./image/intro.png" alt="intro" style="zoom:80%;" />
 
-# 재활용 품목 분류를 위한 Object Detection
+#데이터 제작 프로젝트
 
 Naver BoostCamp AI Tech 4기 CV-19조 데이터 제작 프로젝트
 
-**🏅리더보드(public) 14위/19팀중**
+**🏅리더보드(public) 3위/19팀중**
 
-**🏅리더보드(Private) 14위/19팀중**
+**🏅리더보드(Private) 6위/19팀중**
 
 
 
@@ -92,11 +92,10 @@ Naver BoostCamp AI Tech 4기 CV-19조 데이터 제작 프로젝트
     - Color Jitter 의 파라미터를 조정하여 F1 스코어가 0.5347에서 0.5663으로 소폭 상승.
 
   4. Modeling
-  - ***EAST 사용***
+    - ***EAST 사용***
     - 모델의 수정은 세부규정에 의해 불가.
 
   5. Train & Validation
-  - ***EAST 사용***
     - WandB를 사용하여 실험 관리
     - Early Stop 기능을 구현하여 Loss 값이 특정 Epochs가 경과하였음에도 갱신되지 않았을 때 학습을 중지하고 Best Validation Loss에 해당하는 Weight 값을 저장하도록 설정.
     - Validation에 사용되는 데이터셋 클래스는 기능을 Override하여 별도로 구현하지 않고 학습에 사용되는 데이터셋 클래스를 상속하여 원본 데이터의 경로만 변경하도록 설정.
