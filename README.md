@@ -1,6 +1,6 @@
 <img src="./image/intro.png" alt="intro" style="zoom:80%;" />
 
-#데이터 제작 프로젝트
+# 데이터 제작 프로젝트
 
 Naver BoostCamp AI Tech 4기 CV-19조 데이터 제작 프로젝트
 
