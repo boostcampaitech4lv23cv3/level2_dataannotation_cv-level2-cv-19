@@ -185,7 +185,7 @@ def is_cross_text(start_loc, length, vertices):
     return False
 
 
-def crop_img(img, vertices, labels, length):
+def crop_img(img, vertices, labels, length, bbox_ids=[]):
     '''crop img patches to obtain batch and augment
     Input:
         img         : PIL Image
@@ -374,12 +374,19 @@ class SceneTextDataset(Dataset):
         funcs = []
         if self.color_jitter:
             funcs.append(A.ColorJitter(0.5, 0.5, 0.5, 0.25))
+            # funcs.append(A.ColorJitter(0.1, 0.1, 0.1))
         if self.normalize:
             funcs.append(A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
+            # funcs.append(A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)))  # Applying ImageNet Values
         transform = A.Compose(funcs)
 
         image = transform(image=image)['image']
         word_bboxes = np.reshape(vertices, (-1, 4, 2))
         roi_mask = generate_roi_mask(image, vertices, labels)
 
-        return image, word_bboxes, roi_mask
+        return image, word_bboxes, roi_mask, image_fname
+
+
+class SceneTextDataset_val(SceneTextDataset):
+    def __init__(self, root_dir='../input/data/aistages', split='annotation_0', image_size=1024, crop_size=512, color_jitter=True, normalize=True):
+        super().__init__(root_dir, split, image_size, crop_size, color_jitter, normalize)
